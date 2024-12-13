@@ -245,8 +245,40 @@ DATABASE = 'file_logs.db'
 ipfs_api_url = "http://127.0.0.1:5001/api/v0"
 
 
+def update_schema4():
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    
+    # Check if the 'files' table exists
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='files';")
+    if not c.fetchone():
+        # Create the 'files' table if it doesn't exist
+        c.execute('''CREATE TABLE IF NOT EXISTS files (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_name TEXT,
+                        category TEXT,
+                        ipfs_hash TEXT,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        approved INTEGER DEFAULT 0,
+                        version INTEGER DEFAULT 1,
+                        visibility TEXT DEFAULT 'Private',
+                        dept TEXT DEFAULT 'Unknown'
+                    )''')
+        print("Created 'files' table.")
+    
+    # Check if the 'visibility' column exists in the 'files' table
+    c.execute("PRAGMA table_info(files);")
+    columns = [col[1] for col in c.fetchall()]
+    if 'visibility' not in columns:
+        # Add the 'visibility' column
+        c.execute("ALTER TABLE files ADD COLUMN visibility TEXT DEFAULT 'Private';")
+        print("Column 'visibility' added to the 'files' table.")
+    
+    conn.commit()
+    conn.close()
+    
 
-
+update_schema4()
 
 
 
@@ -345,26 +377,36 @@ def upload_to_ipfs(file):
 def index():
     return render_template('login.html')
 
-@app.route('/signup', methods=['GET', 'POST'])
+@app.route('/signup', methods=['POST'])
 def signup():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = generate_password_hash(request.form['password'])
-        metamask_address = request.form['metamask_address']
+    try:
+        # Parse JSON data
+        data = request.get_json()
+        username = data['username']
+        password = data['password']
+        metamask_address = data['metamask_address']
 
+        # Connect to the database
         conn = sqlite3.connect(DATABASE)
         c = conn.cursor()
-        try:
-            c.execute('INSERT INTO users (username, password, metamask_address, is_admin, is_approved) VALUES (?, ?, ?, 0, 0)',
-                      (username, password, metamask_address))
-            conn.commit()
-        except sqlite3.IntegrityError:
-            return "Username already exists"
-        finally:
-            conn.close()
-        return "Signup successful! Waiting for admin approval."
-    return render_template('signup.html')
 
+        # Insert the user data
+        c.execute('INSERT INTO users (username, password, metamask_address, is_admin, is_approved) VALUES (?, ?, ?, 0, 0)',
+                  (username, password, metamask_address))
+        conn.commit()
+
+        return jsonify({"message": "Signup successful! Waiting for admin approval."}), 201
+
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "Username already exists"}), 400
+    except KeyError:
+        return jsonify({"error": "Invalid request format. Ensure 'username', 'password', and 'metamask_address' are provided."}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+        
+        
 @app.route('/login', methods=['POST'])
 def login():
     username = request.form['username']
