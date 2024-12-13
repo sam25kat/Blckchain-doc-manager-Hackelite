@@ -623,6 +623,40 @@ def update_schema3():
     
     conn.commit()
     conn.close()
+    
+    
+def update_schema4():
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    
+    # Check if the 'files' table exists
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='files';")
+    if not c.fetchone():
+        # Create the 'files' table if it doesn't exist
+        c.execute('''CREATE TABLE IF NOT EXISTS files (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_name TEXT,
+                        category TEXT,
+                        ipfs_hash TEXT,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        approved INTEGER DEFAULT 0,
+                        version INTEGER DEFAULT 1,
+                        visibility TEXT DEFAULT 'Private',
+                        dept TEXT DEFAULT 'Unknown'
+                    )''')
+        print("Created 'files' table.")
+    
+    # Check if the 'visibility' column exists in the 'files' table
+    c.execute("PRAGMA table_info(files);")
+    columns = [col[1] for col in c.fetchall()]
+    if 'visibility' not in columns:
+        # Add the 'visibility' column
+        c.execute("ALTER TABLE files ADD COLUMN visibility TEXT DEFAULT 'Private';")
+        print("Column 'visibility' added to the 'files' table.")
+    
+    conn.commit()
+    conn.close()
+
 
 
 if __name__ == '__main__':
@@ -632,4 +666,5 @@ if __name__ == '__main__':
     update_schema()
     update_schema2()
     update_schema3()
+    update_schema4()
     app.run(debug=True)
