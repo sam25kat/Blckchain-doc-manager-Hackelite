@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Dashboard</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script>
+        function searchTable(inputId, tableId) {
+            var input, filter, table, tr, td, i, j, txtValue;
+            input = document.getElementById(inputId);
+            filter = input.value.toUpperCase();
+            table = document.getElementById(tableId);
+            tr = table.getElementsByTagName("tr");
+
+            for (i = 1; i < tr.length; i++) { // Skip the header row
+                tr[i].style.display = "none"; // Hide all rows initially
+                td = tr[i].getElementsByTagName("td");
+                
+                for (j = 0; j < td.length; j++) {
+                    if (td[j]) {
+                        txtValue = td[j].textContent || td[j].innerText;
+                        if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                            tr[i].style.display = ""; // Show the row if match found
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <h2>Faculty Dashboard</h2>
+
+    <p>Welcome, {{ session['username'] }}</p>
+    {% if circular %}
+             <p>Current Circular: {{ circular[1] }} (Posted on: {{ circular[2] }})</p>
+             {% endif %}
+    <form method="POST" enctype="multipart/form-data">
+        <label for="file">File:</label>
+        <input type="file" name="file" id="file" required>
+        <label for="category">Department and Category:</label>
+        <input type="text" name="category" id="category" placeholder="Deptname-Category/Comment" required>
+        <label for="dept">Department:</label>
+        <input type="text" name="dept" id="dept" placeholder="Deptname" required>
+        
+        
+        <button type="submit">Upload</button>
+    </form>
+    
+    
+    <!-- Files Table -->
+    <h2 class="mt-4">Uploaded Files</h2>
+    <input type="text" id="fileSearch" onkeyup="searchTable('fileSearch', 'fileTable')" placeholder="Search for files.." class="form-control mb-3">
+        <table class="table table-bordered" id="fileTable">
+        <thead>
+            <tr>
+                <th>Dept.</th>
+                <th>ID</th>
+                <th>File Name</th>
+                <th>Category</th>
+                
+                <th>IPFS Link</th>
+                <th>Approval Status</th>
+                
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in files %}
+            <tr>
+                <td>{{ file.dept }}</td>
+                <td>{{ file.id }}</td>
+                <td>{{ file.name }}</td>
+                <td>{{ file.category }}</td>
+                
+                
+                    <td><a href="{{ file.ipfs_hash }}" target="_blank">View File</a></td>
+
+                
+                <td>{{ 'Approved' if file.approved else 'Pending' }}</td>
+                
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+
+    <a href="/logout">Logout</a>
+</body>
+</html>
